@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Agenda do Laboratório PMC</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 40px; background: #f7f7f7; }
+        h1 { color: #2c3e50; }
+        table { border-collapse: collapse; width: 100%; background: #fff; }
+        th, td { border: 1px solid #ccc; padding: 8px; text-align: center; }
+        th { background: #2980b9; color: #fff; }
+        tr:nth-child(even) { background: #f2f2f2; }
+        form { margin-bottom: 30px; background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 2px 8px #0001; }
+        label { margin-right: 10px; }
+        input, select { margin-right: 20px; }
+        button { background: #2980b9; color: #fff; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; }
+        button:hover { background: #1c5a85; }
+        .confirmado { background: #c8f7c5 !important; }
+    </style>
+</head>
+<body>
+    <h1>Agenda do Laboratório PMC</h1>
+    <form id="agendaForm">
+        <label for="professor">Professor:</label>
+        <input type="text" id="professor" name="professor" required>
+        <label for="data">Data:</label>
+        <input type="date" id="data" name="data" required>
+        <label for="hora">Hora:</label>
+        <select id="hora" name="hora" required>
+            <option value="07:00-07:55">07:00 - 07:55</option>
+            <option value="07:55-08:50">07:55 - 08:50</option>
+            <option value="08:50-09:45">08:50 - 09:45</option>
+            <option value="10:05-11:00">10:05 - 11:00</option>
+            <option value="11:00-11:55">11:00 - 11:55</option>
+            <option value="13:00-13:55">13:00 - 13:55</option>
+            <option value="13:55-14:50">13:55 - 14:50</option>
+            <option value="14:50-15:45">14:50 - 15:45</option>
+        </select>
+        <button type="submit">Agendar</button>
+    </form>
+    <h2>Horários Agendados</h2>
+    <table id="agendaTabela">
+        <thead>
+            <tr>
+                <th>Professor</th>
+                <th>Data</th>
+                <th>Hora</th>
+                <th>Status</th>
+                <th>Ação</th>
+            </tr>
+        </thead>
+        <tbody>
+            <!-- Agendamentos aparecerão aqui -->
+        </tbody>
+    </table>
+    <script>
+        const form = document.getElementById('agendaForm');
+        const tabela = document.getElementById('agendaTabela').getElementsByTagName('tbody')[0];
+        // Bloquear datas anteriores ao dia atual no input de data
+        const inputData = document.getElementById('data');
+        const hoje = new Date();
+        hoje.setHours(0,0,0,0);
+        const yyyy = hoje.getFullYear();
+        const mm = String(hoje.getMonth() + 1).padStart(2, '0');
+        const dd = String(hoje.getDate()).padStart(2, '0');
+        inputData.min = `${yyyy}-${mm}-${dd}`;
+
+        // Função para carregar agendamentos do localStorage
+        function carregarAgendamentos() {
+            const dados = localStorage.getItem('agendamentosLab');
+            if (!dados) return [];
+            try {
+                return JSON.parse(dados);
+            } catch {
+                return [];
+            }
+        }
+
+        // Função para salvar agendamentos no localStorage
+        function salvarAgendamentos(agendamentos) {
+            localStorage.setItem('agendamentosLab', JSON.stringify(agendamentos));
+        }
+
+        // Função para renderizar a tabela
+        function renderizarTabela(agendamentos) {
+            tabela.innerHTML = '';
+            agendamentos.forEach((ag, idx) => {
+                const novaLinha = tabela.insertRow();
+                if (ag.confirmado) novaLinha.classList.add('confirmado');
+                novaLinha.insertCell(0).innerText = ag.professor;
+                novaLinha.insertCell(1).innerText = ag.data;
+                novaLinha.insertCell(2).innerText = ag.hora;
+                // Status
+                const cellStatus = novaLinha.insertCell(3);
+                cellStatus.innerText = ag.confirmado ? 'Confirmado' : 'Pendente';
+                // Ações
+                const cellAcao = novaLinha.insertCell(4);
+                // Botão Confirmar
+                const btnConfirmar = document.createElement('button');
+                btnConfirmar.innerText = 'Confirmar';
+                btnConfirmar.disabled = ag.confirmado;
+                btnConfirmar.onclick = function() {
+                    const senhaInformada = prompt('Digite a senha para confirmar:');
+                    if (senhaInformada === 'CETI25') {
+                        ag.confirmado = true;
+                        salvarAgendamentos(agendamentos);
+                        renderizarTabela(agendamentos);
+                        alert('Aula confirmada com sucesso!');
+                    } else {
+                        alert('Senha incorreta! Confirmação não autorizada.');
+                    }
+                };
+                cellAcao.appendChild(btnConfirmar);
+                // Botão Cancelar
+                const btnCancelar = document.createElement('button');
+                btnCancelar.innerText = 'Cancelar';
+                btnCancelar.onclick = function() {
+                    const senhaInformada = prompt('Digite a senha para cancelar:');
+                    if (senhaInformada === 'CETI25') {
+                        agendamentos.splice(idx, 1);
+                        salvarAgendamentos(agendamentos);
+                        renderizarTabela(agendamentos);
+                        alert('Agendamento cancelado com sucesso!');
+                    } else {
+                        alert('Senha incorreta! Cancelamento não autorizado.');
+                    }
+                };
+                cellAcao.appendChild(btnCancelar);
+            });
+        }
+
+        // Carregar e exibir agendamentos ao abrir a página
+        let agendamentos = carregarAgendamentos();
+        renderizarTabela(agendamentos);
+
+        form.addEventListener('submit', function(event) {
+            event.preventDefault();
+            const professor = document.getElementById('professor').value;
+            const data = document.getElementById('data').value;
+            const hora = document.getElementById('hora').value;
+            // Impede datas passadas (inclusive ontem)
+            const hoje = new Date();
+            hoje.setHours(0,0,0,0);
+            const dataSelecionada = new Date(data);
+            if (dataSelecionada < hoje) {
+                alert('Não é possível agendar para datas passadas!');
+                return;
+            }
+            let conflito = agendamentos.some(ag => ag.data === data && ag.hora === hora);
+            if (conflito) {
+                alert('Já existe um agendamento para este horário e data!');
+                return;
+            }
+            agendamentos.push({ professor, data, hora, confirmado: false });
+            agendamentos.sort(function(a, b) {
+                if (a.data < b.data) return -1;
+                if (a.data > b.data) return 1;
+                const inicioA = a.hora.split('-')[0];
+                const inicioB = b.hora.split('-')[0];
+                return inicioA.localeCompare(inicioB);
+            });
+            salvarAgendamentos(agendamentos);
+            renderizarTabela(agendamentos);
+            form.reset();
+        });
+    </script>
+</body>
+</html>
